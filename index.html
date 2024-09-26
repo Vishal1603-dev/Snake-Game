@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; /* Ensure it takes full height */
+            background-color: white;
+            overflow: hidden; /* Prevent scrolling */
+        }
+        canvas {
+            background-color: green; /* Set the grid background to green */
+            display: block;
+            border: 1px solid black;
+        }
+        #controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        .button {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 15px;
+            margin: 10px;
+            font-size: 24px;
+            border-radius: 10px;
+            width: 80px;
+            height: 80px;
+        }
+        #restartButton {
+            font-size: 14px; /* Smaller font size */
+            padding: 5px 10px; /* Smaller padding */
+            margin-left: 10px; /* Space between up button and restart button */
+            background-color: #333;
+            color: white;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+        }
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px; /* Move score to the left */
+            font-size: 24px;
+            font-weight: bold;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+
+<div id="score">Score: 0</div>
+<canvas id="gameCanvas"></canvas>
+<div id="controls">
+    <button class="button" id="upButton">↑</button>
+    <button id="restartButton" class="button">Restart</button>
+    <div style="display: flex; justify-content: center; width: 100%;">
+        <button class="button" id="leftButton">←</button>
+        <button class="button" id="downButton">↓</button>
+        <button class="button" id="rightButton">→</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('score');
+
+    function resizeCanvas() {
+        const smallerDimension = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.9); // Use 90% of the screen dimensions
+        canvas.width = smallerDimension;
+        canvas.height = smallerDimension;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const gridSize = canvas.width / 30; // Smaller grid size
+    let speed = 5;
+    let snake = [{x: gridSize * 5, y: gridSize * 5}];
+    let dx = 0;
+    let dy = 0;
+    let food = generateFood();
+    let score = 0;
+    let lastRenderTime = 0;
+    let gameOver = false;
+    let hasMoved = false;
+
+    document.getElementById('upButton').addEventListener('click', () => {
+        if (dy === 0) {
+            dx = 0;
+            dy = -gridSize;
+            hasMoved = true;
+        }
+    });
+    document.getElementById('downButton').addEventListener('click', () => {
+        if (dy === 0) {
+            dx = 0;
+            dy = gridSize;
+            hasMoved = true;
+        }
+    });
+    document.getElementById('leftButton').addEventListener('click', () => {
+        if (dx === 0) {
+            dx = -gridSize;
+            dy = 0;
+            hasMoved = true;
+        }
+    });
+    document.getElementById('rightButton').addEventListener('click', () => {
+        if (dx === 0) {
+            dx = gridSize;
+            dy = 0;
+            hasMoved = true;
+        }
+    });
+
+    document.getElementById('restartButton').addEventListener('click', restartGame);
+
+    window.addEventListener('keydown', (event) => {
+        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+            event.preventDefault();
+        }
+        switch (event.key) {
+            case 'ArrowUp':
+                if (dy === 0) {
+                    dx = 0;
+                    dy = -gridSize;
+                    hasMoved = true;
+                }
+                break;
+            case 'ArrowDown':
+                if (dy === 0) {
+                    dx = 0;
+                    dy = gridSize;
+                    hasMoved = true;
+                }
+                break;
+            case 'ArrowLeft':
+                if (dx === 0) {
+                    dx = -gridSize;
+                    dy = 0;
+                    hasMoved = true;
+                }
+                break;
+            case 'ArrowRight':
+                if (dx === 0) {
+                    dx = gridSize;
+                    dy = 0;
+                    hasMoved = true;
+                }
+                break;
+        }
+    });
+
+    function main(currentTime) {
+        if (gameOver) return;
+        window.requestAnimationFrame(main);
+        const secondsSinceLastRender = (currentTime - lastRenderTime) / 1000;
+        if (secondsSinceLastRender < 1 / speed) return;
+        lastRenderTime = currentTime;
+
+        if (hasMoved) {
+            update();
+        }
+        draw();
+    }
+
+    function update() {
+        const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+        snake.unshift(head);
+
+        if (Math.abs(head.x - food.x) < gridSize && Math.abs(head.y - food.y) < gridSize) {
+            score++;
+            scoreDisplay.textContent = "Score: " + score;
+            food = generateFood();
+            speed += 0.2;
+        } else {
+            snake.pop();
+        }
+
+        if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height || collision(head)) {
+            gameOver = true;
+            alert("Game Over! Score: " + score);
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        snake.forEach(part => {
+            ctx.fillStyle = 'red'; // Snake is now red
+            ctx.beginPath();
+            ctx.arc(part.x + gridSize / 2, part.y + gridSize / 2, gridSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        ctx.fillStyle = 'orange'; // Food is now orange
+        ctx.beginPath();
+        ctx.arc(food.x + gridSize / 2, food.y + gridSize / 2, gridSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    function generateFood() {
+        let foodX, foodY;
+        do {
+            foodX = Math.floor(Math.random() * canvas.width / gridSize) * gridSize;
+            foodY = Math.floor(Math.random() * canvas.height / gridSize) * gridSize;
+        } while (collision({x: foodX, y: foodY}));
+        return {x: foodX, y: foodY};
+    }
+
+    function collision(part) {
+        for (let i = 1; i < snake.length; i++) {
+            if (part.x === snake[i].x && part.y === snake[i].y) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function restartGame() {
+        snake = [{x: gridSize * 5, y: gridSize * 5}];
+        dx = 0;
+        dy = 0;
+        food = generateFood();
+        score = 0;
+        scoreDisplay.textContent = "Score: 0";
+        speed = 5;
+        gameOver = false;
+        hasMoved = false;
+        window.requestAnimationFrame(main);
+    }
+
+    window.requestAnimationFrame(main);
+</script>
+
+</body>
+</html>
